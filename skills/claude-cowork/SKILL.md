@@ -203,9 +203,10 @@ Treat an unattended task's prompt as something the task itself can change.
     copy then stops getting updates and nothing tells you.
   - To version prompts, keep a one-way copy in a repo somewhere else, or use
     the stub pattern in `production-patterns.md`.
-- **`spaces.json` is the live project store,** and every project change is
-  saved straight away. If a UI change doesn't show up in the file within a
-  second, it didn't take.
+- **`spaces.json` was the live project store until the September 2026
+  merge.** Before then, every project change was saved to it straight away.
+  Since the merge, projects are claude.ai projects held on the server, and
+  `spaces.json` is a leftover from the move. Check projects at claude.ai.
 - The app is not App Sandboxed, so hand-written folder paths work. The
   exceptions are Desktop, Documents and Downloads, which macOS protects behind
   its own permission prompt.
@@ -256,6 +257,7 @@ tasks every day. It is not a full product changelog.
 | July 2026 (1.24012.9) | Local scheduler. Tasks stored as a `Scheduled/<id>/SKILL.md` file plus a JSON entry | Enabling a task with no recent runs ran it **at once**, whatever its day. A weekly Tuesday task enabled on a Friday ran that afternoon |
 | July 2026 | Split ("host-loop") sessions observed: file tools on the host, shell in the VM | The old "Cowork is a VM" picture became wrong for file paths. A path that works in Read can fail in the shell |
 | August 2026 | Artifact format changed on 2026-08-19 (official) | |
+| 2026-09-14 to 09-16 | **Cowork and chat merged into one Claude** (announced 2026-09-16, Pro/Max first). No mode picker; Claude decides per conversation whether to answer or do a multi-step task. Cowork "spaces" became claude.ai **projects**, now shared by chat and tasks (memory, instructions, files, scheduled tasks). On the Mac, the app converted each local space to a cloud project and **uploaded its memory files** (`space-memory-copy/` records each upload with the new `projectUuid`), two days before the announcement | Local `spaces.json` stopped being the live store, so editing it no longer changes anything. A space's memory now lives in the cloud project too |
 | 2026-09-24 | A background sweep **converted local tasks into server-side routines** bound to the device, and turned off the local copies | Local `SKILL.md` files stopped being read without any warning. Prompts moved to the server, with no file and no history |
 | September 2026 | Routine runs: agent in the cloud, shell (`device_bash`) in the Mac's VM, browser in the user's Chrome | Runs fire hours late when the Mac was asleep. The prompt shows both the scheduled and the actual fire time |
 | By October 2026 (2.19675.1) | Re-enabling waits for the next scheduled time (`missedRunScanFloor`) | Fixes the surprise run on enable |
