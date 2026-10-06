@@ -54,7 +54,11 @@ still needs the desktop app open. For new work that must stay on the computer,
 Anthropic now points to Claude Code Desktop.
 
 **Migration of existing tasks.** The app can convert local scheduled tasks into
-server-side routines in a background sweep. When it does, the local entry is
+server-side routines in an automatic background sweep (`[RemoteMigrationSweep]`).
+It runs on a timer, is switched on by a server-side flag, and only considers
+enabled tasks. Its settings include a cooldown after the user declines, which
+suggests the user is offered a choice. Moving a task by hand stamps
+`via: "manual"` instead. When it does, the local entry is
 set `enabled: false` and stamped
 `migratedToRemote: {triggerId: "trig_…", via: "sweep"}`. Its `SKILL.md` stays
 on disk but **nothing reads it any more**. If you edit a local prompt file and
