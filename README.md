@@ -23,6 +23,29 @@ Claude Code:
 Or copy a folder from `skills/` into `~/.claude/skills/`. To use a skill in
 Claude or Cowork, upload it as a skill.
 
+## Keeping it honest
+
+Cowork changes without notice, so `checks/drift.py` tests the skills against
+reality. It runs on a Mac with Claude Desktop installed; it can't run in CI,
+because the thing under test is the app itself.
+
+- **Version:** flags any app update, and calls out major versions.
+- **Anchors:** each important claim is tied to a string that must still appear
+  in the app bundle (`checks/anchors.json`). A missing anchor names the skill
+  section to re-check.
+- **Docs:** flags any text change in the official Cowork articles.
+
+```
+python3 -I checks/drift.py            # exit 1 on drift
+python3 -I checks/drift.py --issue    # also open or update a GitHub issue
+python3 -I checks/drift.py --rebaseline   # only after re-verifying the skills
+```
+
+Passing anchors means the app's internals still contain what the claims rely
+on. It does not prove the behaviour is unchanged. A version or docs change
+starts a manual review; only a full review updates the version a skill says it
+was checked against.
+
 ## Provenance
 
 Written with heavy help from Claude, from first-hand observation: the app's

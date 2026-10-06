@@ -1,0 +1,29 @@
+{
+  "_comment": "Each anchor is a regex that must match somewhere in the Claude Desktop app bundle (.vite/build/*.js) for the named claim to still hold. A missing anchor means 'go re-verify this section', not necessarily 'the claim is wrong'.",
+  "anchors": [
+    {"id": "cowork-scheduler", "regex": "logPrefix:\"\\[ScheduledTasks\\]\"", "skill": "claude-cowork", "section": "2. Cowork vs Claude Code Desktop"},
+    {"id": "ccd-scheduler", "regex": "logPrefix:\"\\[CCDScheduledTasks\\]\"", "skill": "claude-cowork", "section": "2. Cowork vs Claude Code Desktop"},
+    {"id": "scheduled-dir", "regex": "\"Scheduled\"\\)", "skill": "claude-cowork", "section": "3. Where things live"},
+    {"id": "settings-json", "regex": "\"scheduled-tasks\\.json\"", "skill": "claude-cowork", "section": "3. Where things live"},
+    {"id": "spaces-json", "regex": "\"spaces\\.json\"", "skill": "claude-cowork", "section": "3. Where things live"},
+    {"id": "routine-grants", "regex": "routineFolderGrants", "skill": "claude-cowork", "section": "3. Where things live"},
+    {"id": "migration-stamp", "regex": "migratedToRemote", "skill": "claude-cowork", "section": "1. Migration of existing tasks"},
+    {"id": "host-loop", "regex": "hostLoopMode", "skill": "claude-cowork", "section": "4. What a session can reach"},
+    {"id": "protected-roots", "regex": "\\[\"Scheduled\",\"Artifacts\"\\]", "skill": "claude-cowork", "section": "4. Folders Cowork refuses"},
+    {"id": "protected-claude", "regex": "\\[\"scheduled-tasks\",\"agents\",\"plugins\",\"commands\",\"skills\"\\]", "skill": "claude-cowork", "section": "4. Folders Cowork refuses"},
+    {"id": "managed-root-reason", "regex": "managed_root_overlap", "skill": "claude-cowork", "section": "4. Folders Cowork refuses"},
+    {"id": "session-storage-deny", "regex": "Cowork's internal session storage", "skill": "claude-cowork", "section": "4. What a session can reach"},
+    {"id": "update-tool", "regex": "\"update_scheduled_task\"", "skill": "claude-cowork", "section": "5. A task can rewrite itself"},
+    {"id": "delete-guard", "regex": "Refusing to delete the scheduled task that launched this session", "skill": "claude-cowork", "section": "5. A task can rewrite itself"},
+    {"id": "new-tools", "regex": "\"run_scheduled_task\"", "skill": "claude-cowork", "section": "5. A task can rewrite itself"},
+    {"id": "dispatch-check", "regex": "task file not found", "skill": "claude-cowork", "section": "6. How the scheduler decides"},
+    {"id": "enable-floor", "regex": "stampMissedRunScanFloor", "skill": "claude-cowork", "section": "6. How the scheduler decides"},
+    {"id": "nofollow-writer", "regex": "path moved between validation and open", "skill": "claude-cowork", "section": "7. Editing by hand (symlinks)"}
+  ],
+  "docs": [
+    "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork.md",
+    "https://support.claude.com/en/articles/15520349.md",
+    "https://support.claude.com/en/articles/13345190.md",
+    "https://code.claude.com/docs/en/desktop-scheduled-tasks.md"
+  ]
+}

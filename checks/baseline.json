@@ -1,0 +1,10 @@
+{
+  "app_version": "2.26454.0",
+  "verified_on": "2026-10-06",
+  "docs": {
+    "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork.md": "0a1be7e51571a6dffcae2a959be1a571c6d6665829d9d41dd075bf75122cfdb3",
+    "https://support.claude.com/en/articles/15520349.md": "fa0b76d7ed29d3aae3791227d37026f894b384b36206cab67bd642c78c2d2a99",
+    "https://support.claude.com/en/articles/13345190.md": "b2ce807f77d155a640c1b1c22126595e0d0e4d1f503244a5075bf8c64e65b0ed",
+    "https://code.claude.com/docs/en/desktop-scheduled-tasks.md": "7b02ef2472ff75833876abdc45ad16fffd20d15ad4ec9ef56569babc94648c0c"
+  }
+}
