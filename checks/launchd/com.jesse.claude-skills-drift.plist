@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.jesse.claude-skills-drift</string>
+  <!-- Weekly drift check of the Cowork skills against the installed Claude
+       Desktop and the official docs. Opens or updates a GitHub issue on drift.
+       A login shell supplies PATH for npx (nvm), gh and python3. This file is
+       the source; launchd runs the copy in ~/Library/LaunchAgents. -->
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>cd "$HOME/projects/claude-skills" &amp;&amp; git pull -q --ff-only; date; python3 -I checks/drift.py --issue</string>
+  </array>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>1</integer>
+    <key>Hour</key>
+    <integer>9</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/Users/Siwen/Library/Logs/claude-skills-drift.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/Siwen/Library/Logs/claude-skills-drift.log</string>
+</dict>
+</plist>

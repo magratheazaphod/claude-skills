@@ -14,15 +14,14 @@ Usage:
 """
 
 import argparse
-import glob
 import hashlib
 import json
 import os
 import plistlib
 import re
 import subprocess
+import struct
 import sys
-import tempfile
 from datetime import date
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -35,17 +34,32 @@ def app_version():
         return plistlib.load(f)["CFBundleShortVersionString"]
 
 
-def bundle_sources(workdir):
-    # The app ships its main-process JS inside app.asar; extract once per run.
-    subprocess.run(
-        ["npx", "-y", "@electron/asar", "extract",
-         f"{APP}/Contents/Resources/app.asar", workdir],
-        check=True, capture_output=True,
-    )
-    text = []
-    for path in glob.glob(os.path.join(workdir, ".vite", "build", "**", "*.js"), recursive=True):
-        with open(path, errors="ignore") as f:
-            text.append(f.read())
+def bundle_sources():
+    """Concatenate the main-process JS under .vite/build/ inside app.asar.
+
+    Reads the asar archive directly (stdlib only) so the check has no Node
+    dependency: launchd runs it without the interactive shell that puts nvm's
+    npx on PATH. Format: four little-endian uint32s (pickle header), where the
+    second is the header buffer size and the fourth the JSON length; the JSON
+    index follows at byte 16, and file data starts at 8 + header buffer size.
+    """
+    path = f"{APP}/Contents/Resources/app.asar"
+    with open(path, "rb") as f:
+        _, header_size, _, json_len = struct.unpack("<4I", f.read(16))
+        index = json.loads(f.read(json_len))
+        base = 8 + header_size
+        build = index["files"][".vite"]["files"]["build"]
+        text = []
+
+        def walk(node):
+            for name, entry in node.get("files", {}).items():
+                if "files" in entry:
+                    walk(entry)
+                elif name.endswith(".js") and not entry.get("unpacked"):
+                    f.seek(base + int(entry["offset"]))
+                    text.append(f.read(entry["size"]).decode("utf-8", errors="ignore"))
+
+        walk(build)
     return "\n".join(text)
 
 
@@ -68,8 +82,7 @@ def run_checks(cfg, baseline):
         kind = "MAJOR" if version.split(".")[0] != old_major else "minor"
         findings.append(f"App version changed ({kind}): {baseline.get('app_version')} -> {version}")
 
-    with tempfile.TemporaryDirectory() as tmp:
-        src = bundle_sources(tmp)
+    src = bundle_sources()
     for a in cfg["anchors"]:
         if not re.search(a["regex"], src):
             findings.append(f"Anchor missing: {a['id']} -> re-verify {a['skill']} section '{a['section']}'")
@@ -116,7 +129,15 @@ def main():
         with open(baseline_path) as f:
             baseline = json.load(f)
 
-    version, doc_hashes, findings = run_checks(cfg, baseline)
+    try:
+        version, doc_hashes, findings = run_checks(cfg, baseline)
+    except Exception as e:
+        # A check that crashes must not look like a quiet week.
+        msg = f"Drift check itself failed: {type(e).__name__}: {e}"
+        print(msg)
+        if args.issue:
+            open_issue([msg], "unknown")
+        return 2
 
     if args.rebaseline:
         missing = [f for f in findings if f.startswith(("Anchor missing", "Could not fetch"))]

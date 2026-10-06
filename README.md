@@ -41,6 +41,12 @@ python3 -I checks/drift.py --issue    # also open or update a GitHub issue
 python3 -I checks/drift.py --rebaseline   # only after re-verifying the skills
 ```
 
+It runs weekly on Mondays at 09:00 via launchd
+(`checks/launchd/com.jesse.claude-skills-drift.plist`, installed as a copy in
+`~/Library/LaunchAgents/`), logging to `~/Library/Logs/claude-skills-drift.log`.
+If the check itself crashes, that also opens an issue, so a broken check can't
+look like a quiet week.
+
 Passing anchors means the app's internals still contain what the claims rely
 on. It does not prove the behaviour is unchanged. A version or docs change
 starts a manual review; only a full review updates the version a skill says it
