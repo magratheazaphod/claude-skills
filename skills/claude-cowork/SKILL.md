@@ -56,8 +56,12 @@ Anthropic now points to Claude Code Desktop.
 **Migration of existing tasks.** The app can convert local scheduled tasks into
 server-side routines in an automatic background sweep (`[RemoteMigrationSweep]`).
 It runs on a timer, is switched on by a server-side flag, and only considers
-enabled tasks. Its settings include a cooldown after the user declines, which
-suggests the user is offered a choice. Moving a task by hand stamps
+enabled tasks. **It asks nobody.** Its "decline" outcomes are the system
+declining (`declined_surface`, `declined_routines_disabled`,
+`declined_mode_unavailable`), not a user prompt. It waits until the Mac is
+awake and online, then converts tasks a few seconds apart. The app log
+(`~/Library/Logs/Claude/main*.log`) records each one as `Remote migration
+completed; local copy disabled: <task>`. Moving a task by hand stamps
 `via: "manual"` instead. When it does, the local entry is
 set `enabled: false` and stamped
 `migratedToRemote: {triggerId: "trig_…", via: "sweep"}`. Its `SKILL.md` stays
