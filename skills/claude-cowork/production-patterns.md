@@ -1,16 +1,11 @@
----
-name: cowork-in-production
-description: Field-tested patterns for running real, unattended products on Claude Cowork scheduled tasks and routines - keeping prompts in git behind a stub, handing results to a local app through files, pre-flight checks, one source of truth for judgement, model tiering, browser hygiene, and debugging runs. Use when designing, writing or debugging a Cowork scheduled task that does recurring work nobody watches, or connecting Cowork to a local app or repo.
----
-
-# Cowork in production
+# Running real work on Cowork: production patterns
 
 These patterns come from running a set of daily and weekly Cowork tasks for
 months as the data feed for a real local app. The tasks scan job boards, judge
 postings against a written rubric, look up company ratings, and hand the
 results to a local tracker. Nothing here depends on that domain.
 
-Read the `claude-cowork` skill first for the mechanics behind each pattern.
+The mechanics behind each pattern are in `SKILL.md` next to this file.
 
 ## The core problem
 

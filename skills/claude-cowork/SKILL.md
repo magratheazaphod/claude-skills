@@ -1,6 +1,6 @@
 ---
 name: claude-cowork
-description: How Claude Cowork (the agentic mode of the Claude desktop app) actually works on macOS, beyond the help center - where scheduled-task prompts and settings live on disk, local tasks vs cloud and device-bound routines, what a session can and cannot reach, how the scheduler decides to run, and the traps when editing or moving Cowork's files. Use before editing or debugging a Cowork scheduled task or routine, reasoning about what Cowork can access, or touching Cowork's data folder.
+description: How Claude Cowork (the agentic mode of the Claude desktop app) actually works on macOS, beyond the help center, and how to run real unattended work on it - where scheduled-task prompts and settings live on disk, local tasks vs cloud and device-bound routines, what a session can and cannot reach, how the scheduler decides to run, editing traps, and field-tested production patterns (prompts in git behind a stub, file handoff to local apps, pre-flight checks, debugging runs). Use before designing, editing or debugging a Cowork scheduled task or routine, connecting Cowork to a local app or repo, reasoning about what Cowork can access, or touching Cowork's data folder.
 ---
 
 # Claude Cowork: how it actually works
@@ -135,7 +135,7 @@ same VM, as a per-run user, with folders at `$HOME/mnt/<folder>`.
 From the VM shell, as observed on one Mac:
 
 - **No route to the host's localhost.** A server on `127.0.0.1` on the Mac is
-  unreachable. Use files to talk to host-side apps (see `cowork-in-production`).
+  unreachable. Use files to talk to host-side apps (see `production-patterns.md`).
 - **No route to github.com** (DNS failed), so `git push`, `git fetch` and `gh`
   fail. Local git commands work against the real mounted tree.
 - **Files can't be deleted.** A leftover `.git/index.lock` can't be removed
@@ -174,7 +174,7 @@ Every Cowork session gets built-in tools for scheduled tasks:
   one approval keeps applying while nobody is watching.
 
 Treat an unattended task's prompt as something the task itself can change.
-`cowork-in-production` covers how to pin it down.
+`production-patterns.md` covers how to pin it down.
 
 ## 6. How the scheduler decides to run
 
@@ -202,7 +202,7 @@ Treat an unattended task's prompt as something the task itself can change.
     original, which **silently replaces a symlink** with a plain file. Your
     copy then stops getting updates and nothing tells you.
   - To version prompts, keep a one-way copy in a repo somewhere else, or use
-    the stub pattern in `cowork-in-production`.
+    the stub pattern in `production-patterns.md`.
 - **`spaces.json` is the live project store,** and every project change is
   saved straight away. If a UI change doesn't show up in the file within a
   second, it didn't take.
@@ -226,7 +226,26 @@ Change the setting in the app, then:
 Don't hard-code absolute paths that Cowork owns in anything outside Cowork,
 because users can change them.
 
-## 9. What changed while this was being tracked (July to October 2026)
+## 9. Running real work on it: the short version
+
+For anything that runs unattended, read **`production-patterns.md`** in this
+skill's folder. It has the full patterns and the reasons for each. The rules
+that matter most:
+
+1. **Keep the real prompt in git.** The prompt stored in Cowork is a stub that
+   runs `git show origin/master:<file>`, so prompts get history and review, and
+   a run can't rewrite its own future instructions.
+2. **Hand data to local apps through files,** in an inbox folder with a written
+   format, never over HTTP. The VM can't reach the host's localhost.
+3. **Start every prompt with a pre-flight check** that a known file exists and
+   isn't empty, and abort loudly if it fails. A run with nothing mounted still
+   "succeeds".
+4. **Run no git commands from the sandbox** other than that one read-only
+   `git show`. The commands that succeed are the ones that do damage.
+5. **Check outputs on disk, not the run's own summary.** Debug routines with
+   `list_runs` and `get_run_log`.
+
+## 10. What changed while this was being tracked (July to October 2026)
 
 This is first-hand: what was seen to change on one Mac while running Cowork
 tasks every day. It is not a full product changelog.

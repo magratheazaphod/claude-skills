@@ -4,10 +4,9 @@ Agent skills by Jesse Day, written from months of daily use.
 
 | Skill | What it covers |
 |---|---|
-| [`claude-cowork`](skills/claude-cowork/SKILL.md) | How Claude Cowork actually works on macOS beyond the help center: where tasks live on disk, local tasks vs routines, what a session can reach, how the scheduler decides to run, the editing traps, and a log of what changed from July to October 2026 |
-| [`cowork-in-production`](skills/cowork-in-production/SKILL.md) | Patterns for running unattended products on Cowork: prompts in git behind a stub, file handoff to local apps, pre-flight checks, model tiering, browser hygiene, debugging routines |
+| [`claude-cowork`](skills/claude-cowork/SKILL.md) | How Claude Cowork actually works on macOS beyond the help center: where tasks live on disk, local tasks vs routines, what a session can reach, how the scheduler decides to run, the editing traps, and a log of what changed from July to October 2026. Its [`production-patterns.md`](skills/claude-cowork/production-patterns.md) covers running unattended products on Cowork: prompts in git behind a stub, file handoff to local apps, pre-flight checks, model tiering, browser hygiene, and debugging routines |
 
-Cowork changes fast. Each skill says which app version and date it was checked
+Cowork changes fast. The skill says which app version and date it was checked
 against. Where a skill and Anthropic's docs disagree about *behaviour*, trust
 the docs and open an issue.
 
