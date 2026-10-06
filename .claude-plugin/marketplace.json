@@ -1,0 +1,14 @@
+{
+  "name": "magratheazaphod-skills",
+  "description": "Agent skills by Jesse Day, written from months of daily use.",
+  "owner": {
+    "name": "Jesse Day"
+  },
+  "plugins": [
+    {
+      "name": "cowork",
+      "source": "./",
+      "description": "How Claude Cowork actually works, and field-tested patterns for running real products on it."
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+{
+  "name": "cowork",
+  "version": "0.1.0",
+  "description": "How Claude Cowork actually works, and field-tested patterns for running real products on it.",
+  "author": {
+    "name": "Jesse Day"
+  },
+  "license": "MIT"
+}
