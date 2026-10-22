@@ -129,8 +129,12 @@ proxy placeholder (`prox…`). Public repos read without setup (tested with
 GitHub connected and the Claude GitHub App installed). Private repos and pushes
 need the repo attached with the **`add_repo`** tool (`list_repos` shows reach
 and push rights); it returns a shallow clone command and asks for
-`register_repo_root` afterwards. Clone, commit and push worked with and without
-a folder connected. Claude may not call `add_repo` unprompted, so **name it in
+`register_repo_root` afterwards (not always offered; pushes work without it).
+Clone, commit and push worked with and without a folder connected. **GitHub
+GraphQL is blocked (403), so every `gh pr …` command fails**; the proxy's error
+says to use REST instead (`gh api repos/<owner>/<repo>/pulls -f head=… -f
+base=main -f title=…`, untested here), plus `…/pulls/<n>/ccr/…` routes for
+review threads, auto-merge and draft status. Claude may not call `add_repo` unprompted, so **name it in
 the prompt**. claude-code#84581 and #100164 report sessions lacking `add_repo`;
 then push from the Mac or use a Claude Code cloud task.
 
