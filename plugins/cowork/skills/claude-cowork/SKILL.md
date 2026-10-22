@@ -200,7 +200,9 @@ while the desktop app is open.
 
 **GitHub from a cloud session: attach the repo with `add_repo`.** `git` and
 `gh` are installed and `GH_TOKEN`/`GITHUB_TOKEN` are set, but the token is a
-short placeholder (it starts `prox`). Reading a public repo works without it.
+short placeholder (it starts `prox`). Before `add_repo`, reading a public repo
+worked (on an account with GitHub connected and the Claude GitHub App
+installed; untested without them).
 Anything that needs credentials (a private repo, any push) works only for
 repos attached to the session with the `add_repo` tool; `list_repos` shows
 what your account can reach and whether you can push. `add_repo` returns a
