@@ -181,6 +181,11 @@ From Claude Code's `RemoteTrigger` tool, or the routine's Runs pane in the app:
 - **`get_run_log`**: the steps of one run, from sandbox start through tool
   calls to the final result. Compare "scheduled for" with the actual fire time
   in the first message. Device-bound runs fire late when the Mac was asleep.
+  **Keep computer awake** (Settings → This computer → System) is app-wide, so
+  it covers Cowork too, and stops idle sleep; closing the lid still sleeps the
+  Mac. A device-bound run also holds the Mac awake while it runs (logged as
+  `[remote-tools-device] keep-awake held`), but nothing wakes a Mac that is
+  already asleep.
 
 Then check the output on disk (did the file land, did the host app move it to
 `processed/`?). Don't trust the run's own summary: a clean search, or a

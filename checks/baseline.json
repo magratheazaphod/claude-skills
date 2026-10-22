@@ -1,10 +1,10 @@
 {
-  "app_version": "2.26454.0",
-  "verified_on": "2026-10-06",
+  "app_version": "3.1623.4",
+  "verified_on": "2026-10-22",
   "docs": {
-    "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork.md": "0a1be7e51571a6dffcae2a959be1a571c6d6665829d9d41dd075bf75122cfdb3",
-    "https://support.claude.com/en/articles/15520349.md": "fa0b76d7ed29d3aae3791227d37026f894b384b36206cab67bd642c78c2d2a99",
-    "https://support.claude.com/en/articles/13345190.md": "b2ce807f77d155a640c1b1c22126595e0d0e4d1f503244a5075bf8c64e65b0ed",
-    "https://code.claude.com/docs/en/desktop-scheduled-tasks.md": "7b02ef2472ff75833876abdc45ad16fffd20d15ad4ec9ef56569babc94648c0c"
+    "https://support.claude.com/en/articles/13854387-schedule-recurring-tasks-in-claude-cowork.md": "5021fa74b6ec06746da2a16fb6589918250f32d3bad31b05feb60ed437b3d7d8",
+    "https://support.claude.com/en/articles/15520349.md": "81b4c9b9a2532d758dc8ba0933c36637d063fa09db6cca27126bba7a8e2f3798",
+    "https://support.claude.com/en/articles/13345190.md": "be992e3b9a9c68003829f7cc3782fbed6798c0c347867bc78ad9b09ec13e6d91",
+    "https://code.claude.com/docs/en/desktop-scheduled-tasks.md": "e5fe75904e96b0b4210bdea6ddcff7047c6090c879c0b26d843c37d354aa7efa"
   }
 }

@@ -11,18 +11,24 @@ center explains how to *use* it. This skill covers the parts it leaves out:
 where things live, what reaches what, and how scheduled work really runs.
 
 **How this was verified.** Everything here was checked on macOS against Claude
-Desktop **2.19675.1** in October 2026. Sources were the app's own bundled
-JavaScript, its state files on disk, the run logs of real scheduled runs, and
-the official help articles. Earlier findings date back to version 1.24012.9
-(July 2026). Cowork changes fast, and it changed a lot on 2026-10-06. Check the
-installed version first:
+Desktop **2.19675.1** in October 2026, and re-checked against **3.1623.4** on
+2026-10-22. Sources were the app's own bundled JavaScript, its state files on
+disk, the run logs of real scheduled runs, and the official help articles.
+Earlier findings date back to version 1.24012.9 (July 2026). Cowork changes
+fast, and it changed a lot on 2026-10-06. Check the installed version first:
 
 ```bash
 defaults read /Applications/Claude.app/Contents/Info.plist CFBundleShortVersionString
 ```
 
-If it has moved well past 2.19675, treat specific paths and field names as
+If it has moved well past 3.1623, treat specific paths and field names as
 leads to re-check, not facts.
+
+**Naming.** Anthropic's docs now call routines **cloud scheduled tasks**, and
+Cowork is becoming "just Claude": in the unified experience there is no
+Chat/Cowork picker. This skill still says "routine" for a server-side task,
+since that is the name in the app's code and in Claude Code's `RemoteTrigger`
+tool.
 
 Official sources, which win on *behaviour* (append `.md` to a URL for raw text):
 
@@ -42,7 +48,7 @@ None of the official docs say where anything is stored on disk.
 |---|---|---|---|
 | Agent runs | on your Mac | Anthropic's cloud | Anthropic's cloud |
 | Shell runs | Cowork's Linux VM on your Mac | cloud sandbox | Cowork's Linux VM on **your Mac** |
-| Local folders | mounted directly | copies fetched for the task, deleted afterwards | through the bound device |
+| Local folders | mounted directly | copies fetched per file, deleted when the session is deleted | through the bound device |
 | Needs the Mac awake and the app open | yes | no | **yes** |
 | Scheduled-task prompt lives | a file on your Mac | Anthropic's servers | Anthropic's servers |
 
@@ -50,15 +56,21 @@ None of the official docs say where anything is stored on disk.
 scheduled tasks run in the cloud by default, and the "Only on your computer"
 setting is gone. Tasks created before that date keep running on the device.
 Anything that needs local files, browser use, computer use or local connectors
-still needs the desktop app open. For new work that must stay on the computer,
-Anthropic now points to Claude Code Desktop.
+still needs the desktop app open. A cloud session reaches connected local
+folders only if it was started on desktop or is a scheduled task, and only
+while the app is open; if the app closes, the session keeps running without
+them. For new work that must stay on the computer, Anthropic now points to
+Claude Code Desktop. The official way to move a Cowork task there is "Download
+task data" on the task, then `/port-task-data` in Claude Code.
 
 **Migration of existing tasks.** The app can convert local scheduled tasks into
 server-side routines in an automatic background sweep (`[RemoteMigrationSweep]`).
 It runs on a timer, is switched on by a server-side flag, and only considers
 enabled tasks. **It asks nobody.** Its "decline" outcomes are the system
-declining (`declined_surface`, `declined_routines_disabled`,
-`declined_mode_unavailable`), not a user prompt. It waits until the Mac is
+declining, not a user prompt. In 3.x there are about sixteen of them (for
+example `declined_surface`, `declined_routines_disabled`,
+`declined_moved_to_cloud`, `declined_session_limit`); grep the bundle for
+`declined_` for the current list. It waits until the Mac is
 awake and online, then converts tasks a few seconds apart. The app log
 (`~/Library/Logs/Claude/main*.log`) records each one as `Remote migration
 completed; local copy disabled: <task>`. Moving a task by hand stamps
@@ -78,7 +90,7 @@ different settings:
 |---|---|---|
 | Task prompts | `<cowork-data>/Scheduled/<task-id>/SKILL.md` | `~/.claude/scheduled-tasks/<name>/SKILL.md` |
 | Task settings | `<session-dir>/scheduled-tasks.json` | the app's userData folder |
-| Execution | VM, folder grants | on the host, full user permissions |
+| Execution | VM, folder grants | on the host, full user permissions; optional per-run Git worktree |
 | Enabled by | `coworkScheduledTasksEnabled` | `ccdScheduledTasksEnabled` |
 
 So most of the CCD scheduling docs apply to Cowork (catch-up runs,
@@ -99,7 +111,8 @@ self-modification, approvals that stick). **The paths do not carry over.**
   `spaces/<space-id>/memory/`. There may be several account/org folders, so
   edit the one that actually has data.
 - **Routine folder grants:** `routineFolderGrants` in the app config, keyed by
-  trigger id.
+  trigger id. (Last seen populated on 2.x; on 3.1623.4 the key was present but
+  empty on a Mac with no device-bound routines left, so unverified on 3.x.)
 - **The VM image:** `~/Library/Application Support/Claude/vm_bundles/`.
 - **Routines themselves** live server-side. You can see them in the app, at
   claude.ai, or from Claude Code's `RemoteTrigger` tool (`get`, `list_runs`,
@@ -116,7 +129,10 @@ Each settings entry holds `id`, `cronExpression` or `fireAt` (a one-off run, in
 epoch ms), `enabled`, `filePath`, `userSelectedFolders`, `userSelectedFiles`,
 `chromeAllowedDomains`, `chromePermissionMode`, `approvedPermissions`,
 `lastRunAt`, `lastScheduledFor`, and on newer versions `model`,
-`permissionMode`, `missedRunScanFloor` and `migratedToRemote`. **No field holds
+`permissionMode`, `missedRunScanFloor` and `migratedToRemote`. By 3.x entries
+can also carry `createdAt`, `disableJitter`, `notifySessionId`,
+`observedToolUse`, `userSelectedProjectUuids`, `migratedToRemoteAt` and
+`migratedFromSpaceId`. **No field holds
 the prompt text.** So the prompt file changes *what* a task does, and the JSON
 or the UI changes *when*, *whether* and *with what access*.
 
@@ -140,7 +156,8 @@ writes outside `/sessions/<vm>/mnt/`, including `/tmp`, is invisible to you and
 to the file tools. A device-bound routine's shell (`device_bash`) runs in the
 same VM, as a per-run user, with folders at `$HOME/mnt/<folder>`.
 
-From the VM shell, as observed on one Mac:
+From the VM shell, as observed on one Mac (last verified on 2.x; not re-tested
+on 3.x):
 
 - **No route to the host's localhost.** A server on `127.0.0.1` on the Mac is
   unreachable. Use files to talk to host-side apps (see `production-patterns.md`).
@@ -186,12 +203,27 @@ Treat an unattended task's prompt as something the task itself can change.
 
 ## 6. How the scheduler decides to run
 
-- **The only check before a run is that the prompt file exists.** Missing or
-  deleted granted folders do not stop a run, and `lastRunAt` is set when the
-  session starts. So **`lastRunAt` means "a session started", not "it worked."**
-  Put your own check at the start of the prompt.
-- **Missed runs catch up** the next time the app is open, or the device is
-  online for a routine. A routine run's prompt includes both the scheduled time
+- **Nothing checks that a run can do its job.** Before 3.x the only check was
+  that the prompt file exists. 3.x adds checks that can *skip* a due run: the
+  app isn't signed in, too many runs of that task or of all tasks are already
+  going (`per_task_limit`, `global_limit`, set by a server flag and usually
+  off), a Dispatch
+  switch is holding the task, the host isn't ready for an off-device run
+  (`host_unavailable`), or a throttle defers it (for up to 15 minutes). The
+  CCD History list shows skipped runs and why. None of these checks look at
+  your folders: missing or deleted granted folders still do not stop a run,
+  and `lastRunAt` is set when the session starts. So **`lastRunAt` means "a
+  session started", not "it worked."** Put your own check at the start of the
+  prompt.
+- **Recurring runs start a few minutes late on purpose.** Each recurring task
+  gets a fixed delay, derived from its id, of up to 10 minutes (a server flag
+  sets the cap), logged as `Delaying dispatch for <task> by <n>s (jitter)`.
+  `disableJitter` turns it off per task. One-off (`fireAt`) runs fire on time.
+- **Missed runs catch up, once.** When the app starts or the Mac wakes, the
+  scheduler starts exactly one catch-up run for the most recent missed time and
+  discards older ones (observed on Cowork). The CCD docs say it looks back
+  seven days. A routine catches up when
+  its device is online. A routine run's prompt includes both the scheduled time
   and the time it actually fired, and device-bound runs can fire hours late.
 - **Re-enabling a task now waits for its next scheduled time.** On 1.x,
   enabling a task with no recent runs ran it immediately, whatever its day.
@@ -204,7 +236,8 @@ Treat an unattended task's prompt as something the task itself can change.
   once at startup and saved from memory. An edit made while the app runs is
   invisible to it and gets overwritten. Back up the file and check the JSON is
   still valid after editing.
-- **Never symlink anything in `Scheduled/` or the session folder.**
+- **Never symlink anything in `Scheduled/` or the session folder.** (Observed
+  on 2.x; the 3.x writer still has the same guard, but this was not re-tested.)
   - The prompt writer refuses symlinks (`ELOOP`), so saving in the UI fails.
   - The JSON writer saves to a temporary file and renames it over the
     original, which **silently replaces a symlink** with a plain file. Your
@@ -267,19 +300,20 @@ tasks every day. It is not a full product changelog.
 | August 2026 | Artifact format changed on 2026-08-19 (official) | |
 | 2026-09-14 to 09-16 | **Cowork and chat merged into one Claude** (announced 2026-09-16, Pro/Max first). No mode picker; Claude decides per conversation whether to answer or do a multi-step task. Cowork "spaces" became claude.ai **projects**, now shared by chat and tasks (memory, instructions, files, scheduled tasks). On the Mac, the app converted each local space to a cloud project and **uploaded its memory files** (`space-memory-copy/` records each upload with the new `projectUuid`), two days before the announcement | Local `spaces.json` stopped being the live store, so editing it no longer changes anything. A space's memory now lives in the cloud project too |
 | 2026-09-24 | A background sweep **converted local tasks into server-side routines** bound to the device, and turned off the local copies | Local `SKILL.md` files stopped being read without any warning. Prompts moved to the server, with no file and no history |
-| September 2026 | Routine runs: agent in the cloud, shell (`device_bash`) in the Mac's VM, browser in the user's Chrome | Runs fire hours late when the Mac was asleep. The prompt shows both the scheduled and the actual fire time |
+| September 2026 | Routine runs: agent in the cloud, shell (`device_bash`) in the Mac's VM, browser in the user's Chrome (by October the default became a browser built into the app, with Claude in Chrome as an opt-in) | Runs fire hours late when the Mac was asleep. The prompt shows both the scheduled and the actual fire time |
 | By October 2026 (2.19675.1) | Re-enabling waits for the next scheduled time (`missedRunScanFloor`) | Fixes the surprise run on enable |
 | By October 2026 | The protected-folder list grew (git and direnv config, shell history, login files, system launch folders). A refusal reason was renamed (`managed_root` → `managed_root_overlap`) | Some folders that could be granted before are now refused |
 | By October 2026 | New built-in tools `list_task_runs` and `run_scheduled_task`. One-off tasks (`fireAt`), and per-task `model` and `permissionMode` | A task can check its own run history and start runs |
 | By October 2026 | In split sessions the shell became a separate tool, and its prompt warns that files written outside `/sessions/<vm>/mnt/` are invisible | |
 | 2026-10-06 | **Cloud by default** for new Pro/Max sessions and tasks, and "Only on your computer" removed (official). Older tasks stay on the device. Anthropic points local-only work to Claude Code Desktop | The biggest change so far: "Cowork runs on your Mac" is no longer the default |
+| By 2026-10-22 (3.1623.4) | Major version 3. The scheduler gained skip checks (sign-in, per-task and global run limits, Dispatch hold, host readiness, throttling) and records skipped runs. Docs renamed routines "cloud scheduled tasks". A built-in browser became the default. "Keep computer awake" setting, CCD per-run worktrees, and "Download task data" / `/port-task-data` to move a task to Claude Code | "The only check before a run is the prompt file" stopped being true. A run can now be skipped for reasons that have nothing to do with the task |
 
 What stayed the same throughout:
 
 - The prompt-file / settings-JSON split for local tasks.
 - Self-rewrite through `update_scheduled_task`, with no self-guard.
 - The writer behaviour that breaks symlinks.
-- The only check before a run being that the prompt file exists.
+- No pre-run check that the task's folders exist or that it can do its job.
 - No route from the VM to the host's localhost or to GitHub.
 - No hand edits while the app is running.
 

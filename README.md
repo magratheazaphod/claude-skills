@@ -40,11 +40,14 @@ python3 -I checks/drift.py --issue    # also open or update a GitHub issue
 python3 -I checks/drift.py --rebaseline   # only after re-verifying the skills
 ```
 
-It runs weekly on Mondays at 09:00 via launchd
+It runs weekly on Mondays at 10:00 via launchd
 (`checks/launchd/com.jesse.claude-skills-drift.plist`, installed as a copy in
 `~/Library/LaunchAgents/`), logging to `~/Library/Logs/claude-skills-drift.log`.
 If the check itself crashes, that also opens an issue, so a broken check can't
-look like a quiet week.
+look like a quiet week. The job waits up to 15 minutes for the network first,
+since the Mac is often just awake and offline. If GitHub still can't be
+reached, it posts a macOS notification instead, and a run that finds no
+completed check in the last 8 days reports that too.
 
 Passing anchors means the app's internals still contain what the claims rely
 on. It does not prove the behaviour is unchanged. A version or docs change

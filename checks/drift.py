@@ -22,11 +22,14 @@ import re
 import subprocess
 import struct
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = "/Applications/Claude.app"
 ISSUE_TITLE = "Cowork drift detected - re-verify the skills"
+# Outside the repo: it records this Mac's runs, not the skills' state.
+STATE = os.path.expanduser("~/Library/Logs/claude-skills-drift.state.json")
+STALE_AFTER = timedelta(days=8)
 
 
 def app_version():
@@ -99,6 +102,37 @@ def run_checks(cfg, baseline):
     return version, doc_hashes, findings
 
 
+def notify(msg):
+    # Last resort when GitHub can't be reached: a failure must reach a human
+    # somehow, or a broken week looks like a quiet one.
+    script = f"display notification {json.dumps(msg[:200])} with title \"claude-skills drift check\""
+    subprocess.run(["osascript", "-e", script], check=False)
+
+
+def last_completed():
+    try:
+        with open(STATE) as f:
+            return datetime.fromisoformat(json.load(f)["last_completed"])
+    except (OSError, KeyError, ValueError):
+        return None
+
+
+def mark_completed():
+    with open(STATE, "w") as f:
+        json.dump({"last_completed": datetime.now().isoformat(timespec="seconds")}, f)
+
+
+def report(findings, version, issue):
+    print("\n".join(findings))
+    if not issue:
+        return
+    try:
+        open_issue(findings, version)
+    except Exception as e:
+        print(f"Could not open a GitHub issue: {type(e).__name__}: {e}")
+        notify(f"{len(findings)} finding(s), and the GitHub issue failed. See ~/Library/Logs/claude-skills-drift.log")
+
+
 def open_issue(findings, version):
     body = (f"Drift check on {date.today()} against Claude Desktop {version}:\n\n"
             + "\n".join(f"- {f}" for f in findings)
@@ -129,15 +163,20 @@ def main():
         with open(baseline_path) as f:
             baseline = json.load(f)
 
+    stale = []
+    last = last_completed()
+    if last and datetime.now() - last > STALE_AFTER:
+        stale = [f"No completed drift check since {last:%Y-%m-%d}; earlier scheduled runs failed or never ran"]
+
     try:
         version, doc_hashes, findings = run_checks(cfg, baseline)
     except Exception as e:
         # A check that crashes must not look like a quiet week.
-        msg = f"Drift check itself failed: {type(e).__name__}: {e}"
-        print(msg)
-        if args.issue:
-            open_issue([msg], "unknown")
+        report(stale + [f"Drift check itself failed: {type(e).__name__}: {e}"], "unknown", args.issue)
         return 2
+    findings = stale + findings
+    if not any(f.startswith("Could not fetch") for f in findings):
+        mark_completed()
 
     if args.rebaseline:
         missing = [f for f in findings if f.startswith(("Anchor missing", "Could not fetch"))]
@@ -155,9 +194,7 @@ def main():
     if not findings:
         print(f"No drift: Claude Desktop {version}, all anchors present, docs unchanged.")
         return 0
-    print("\n".join(findings))
-    if args.issue:
-        open_issue(findings, version)
+    report(findings, version, args.issue)
     return 1
 
 
