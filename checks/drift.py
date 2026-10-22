@@ -122,31 +122,31 @@ def mark_completed():
         json.dump({"last_completed": datetime.now().isoformat(timespec="seconds")}, f)
 
 
-def report(findings, version, issue):
+def report(findings, version, issue, title=ISSUE_TITLE):
     print("\n".join(findings))
     if not issue:
         return
     try:
-        open_issue(findings, version)
+        open_issue(findings, version, title)
     except Exception as e:
         print(f"Could not open a GitHub issue: {type(e).__name__}: {e}")
         notify(f"{len(findings)} finding(s), and the GitHub issue failed. See ~/Library/Logs/claude-skills-drift.log")
 
 
-def open_issue(findings, version):
-    body = (f"Drift check on {date.today()} against Claude Desktop {version}:\n\n"
+def open_issue(findings, version, title=ISSUE_TITLE):
+    body = (f"{title} on {date.today()} against Claude Desktop {version}:\n\n"
             + "\n".join(f"- {f}" for f in findings)
             + "\n\nRe-verify the named sections, update the skills, then run "
               "`python3 -I checks/drift.py --rebaseline`.")
     existing = subprocess.run(
-        ["gh", "issue", "list", "--state", "open", "--search", ISSUE_TITLE, "--json", "number"],
+        ["gh", "issue", "list", "--state", "open", "--search", title, "--json", "number"],
         cwd=HERE, capture_output=True, text=True, check=True,
     )
     numbers = [i["number"] for i in json.loads(existing.stdout)]
     if numbers:
         subprocess.run(["gh", "issue", "comment", str(numbers[0]), "--body", body], cwd=HERE, check=True)
     else:
-        subprocess.run(["gh", "issue", "create", "--title", ISSUE_TITLE, "--body", body], cwd=HERE, check=True)
+        subprocess.run(["gh", "issue", "create", "--title", title, "--body", body], cwd=HERE, check=True)
 
 
 def main():

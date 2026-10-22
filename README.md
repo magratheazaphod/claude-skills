@@ -49,6 +49,19 @@ since the Mac is often just awake and offline. If GitHub still can't be
 reached, it posts a macOS notification instead, and a run that finds no
 completed check in the last 8 days reports that too.
 
+The same job then runs `checks/trigger_test.py` (about $1.50 a run): a
+Claude Code with nothing else installed gets this checkout's plugins and a few
+questions a stranger might ask, most without naming the product, and each must
+load the expected skill. It needs a one-time login:
+`CLAUDE_CONFIG_DIR=~/.claude-skills-trigger claude auth login`.
+
+On every push, GitHub Actions validates the manifests, installs each plugin
+from the commit with no login, and fails if a skill is missing or repo files
+leak into the install. A pre-commit hook (`.githooks`, enable with
+`git config core.hooksPath .githooks`) and the same Action fail when a
+plugin's files change without a version bump, since installs are cached by
+version.
+
 Passing anchors means the app's internals still contain what the claims rely
 on. It does not prove the behaviour is unchanged. A version or docs change
 starts a manual review; only a full review updates the version a skill says it

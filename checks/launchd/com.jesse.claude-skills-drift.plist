@@ -5,7 +5,8 @@
   <key>Label</key>
   <string>com.jesse.claude-skills-drift</string>
   <!-- Weekly drift check of the Cowork skills against the installed Claude
-       Desktop and the official docs. Opens or updates a GitHub issue on drift.
+       Desktop and the official docs, then the skill trigger test (about $1.50
+       a run). Each opens or updates its own GitHub issue on failure.
        A login shell supplies PATH for gh and python3. The Mac is often just
        awake and still offline at this hour, so wait up to 15 minutes for
        GitHub before pulling. This file is the source; launchd runs the copy
@@ -14,7 +15,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>cd "$HOME/projects/claude-skills" &amp;&amp; for i in {1..30}; do curl -fsS -o /dev/null --max-time 5 https://api.github.com &amp;&amp; break; sleep 30; done; git pull -q --ff-only; date; python3 -I checks/drift.py --issue</string>
+    <string>cd "$HOME/projects/claude-skills" &amp;&amp; for i in {1..30}; do curl -fsS -o /dev/null --max-time 5 https://api.github.com &amp;&amp; break; sleep 30; done; git pull -q --ff-only; date; python3 -I checks/drift.py --issue; python3 -I checks/trigger_test.py --issue</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>

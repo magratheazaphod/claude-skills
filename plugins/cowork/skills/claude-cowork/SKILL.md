@@ -198,21 +198,25 @@ Tested on 2026-10-22 with a folder connected:
 So anything that must land on your Mac goes through `device_bash`, and only
 while the desktop app is open.
 
-**GitHub from a cloud session is broken, not blocked by design.** `git` and
-`gh` are installed and `GH_TOKEN`/`GITHUB_TOKEN` are set, but the token is a
-short placeholder (it starts `prox`) that the proxy is meant to swap for a real
-credential. On 2026-10-22 the proxy swapped nothing: `git clone` of a *public*
-repo, even with no credentials sent, failed with a login prompt, and `gh`
-called the token invalid. The Claude GitHub App was installed and covered the
-repo. Anthropic's docs say cloud sessions can clone public repos and, with the
-app, push. Open reports
+**GitHub from a cloud session works only after `add_repo`.** `git` and `gh`
+are installed and `GH_TOKEN`/`GITHUB_TOKEN` are set, but the token is a short
+placeholder (it starts `prox`). The proxy swaps it for a real credential only
+for repos attached to the session. Until then every GitHub request fails, and
+git asks for a username. Attach a repo with the session's `add_repo` tool
+(`list_repos` shows what your account can reach and whether you can push); it
+returns a shallow `git clone` command. On 2026-10-22, in a session with no
+folder connected, that clone, a commit and `git push` of a new branch all
+worked, with the Claude GitHub App installed on the account. Claude does not
+always call `add_repo` on its own, so **name it in the prompt**.
+
+Open reports
 [claude-code#84581](https://github.com/anthropics/claude-code/issues/84581)
 and [#100164](https://github.com/anthropics/claude-code/issues/100164) describe
-the same failure in Cowork (the proxy's error points at an `add_repo` tool that
-Cowork sessions don't have), and one reporter saw pushes work for a few hours
-before stopping. Until that is fixed, don't build a Cowork task that needs
-GitHub: hand the files to the Mac and push from there, or use a Claude Code
-cloud task, which picks its repo up front.
+Cowork sessions where `add_repo` was missing and GitHub stayed unreachable,
+even for public repos. Whether a session with a local folder connected gets
+`add_repo` is untested here. If it isn't offered, hand the files to the Mac
+and push from there, or use a Claude Code cloud task, which picks its repo up
+front.
 
 ## 5. A task can rewrite itself, through tools and not files
 
@@ -336,7 +340,7 @@ tasks every day. It is not a full product changelog.
 | By October 2026 | New built-in tools `list_task_runs` and `run_scheduled_task`. One-off tasks (`fireAt`), and per-task `model` and `permissionMode` | A task can check its own run history and start runs |
 | By October 2026 | In split sessions the shell became a separate tool, and its prompt warns that files written outside `/sessions/<vm>/mnt/` are invisible | |
 | 2026-10-06 | **Cloud by default** for new Pro/Max sessions and tasks, and "Only on your computer" removed (official). Older tasks stay on the device. Anthropic points local-only work to Claude Code Desktop | The biggest change so far: "Cowork runs on your Mac" is no longer the default |
-| 2026-10-22 | A cloud session with a connected folder used two shells: a cloud VM behind a proxy, and `device_bash` on the Mac for the folder. GitHub was unreachable from the cloud shell even for a public repo with the Claude GitHub App installed (open bugs claude-code#84581, #100164) | The VM finding "no route to GitHub" now has a cloud twin with a different cause. Neither shell is a place to run git against GitHub |
+| 2026-10-22 | A cloud session with a connected folder used two shells: a cloud VM behind a proxy, and `device_bash` on the Mac for the folder. GitHub from the cloud shell needs the repo attached with `add_repo` first; after that, clone and push worked (no folder connected). Open bugs claude-code#84581 and #100164 report sessions without `add_repo` | Unlike the VM, a cloud shell can use GitHub, but only for repos attached to the session |
 | By 2026-10-22 (3.1623.4) | Major version 3. The scheduler gained skip checks (sign-in, per-task and global run limits, Dispatch hold, host readiness, throttling) and records skipped runs. Docs renamed routines "cloud scheduled tasks". A built-in browser became the default. "Keep computer awake" setting, CCD per-run worktrees, and "Download task data" / `/port-task-data` to move a task to Claude Code | "The only check before a run is the prompt file" stopped being true. A run can now be skipped for reasons that have nothing to do with the task |
 
 What stayed the same throughout:
@@ -345,8 +349,7 @@ What stayed the same throughout:
 - Self-rewrite through `update_scheduled_task`, with no self-guard.
 - The writer behaviour that breaks symlinks.
 - No pre-run check that the task's folders exist or that it can do its job.
-- No route from the VM to the host's localhost or to GitHub (and, by October,
-  no working GitHub access from cloud shells either).
+- No route from the VM to the host's localhost or to GitHub.
 - No hand edits while the app is running.
 
 The lesson: in four months the storage model, the place tasks execute and the

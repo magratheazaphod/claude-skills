@@ -1,0 +1,38 @@
+# Validate the manifests and install the plugin the way a stranger would,
+# from this commit, with no login. Catches a broken marketplace.json, a bad
+# plugin path, or a skill that fails to land.
+name: Plugin install
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Claude Code
+        run: npm install -g @anthropic-ai/claude-code@2.1.308
+      - name: Validate manifests
+        run: |
+          claude plugin validate .
+          for p in plugins/*/; do claude plugin validate "$p"; done
+      - name: Install every plugin from this checkout
+        env:
+          CLAUDE_CONFIG_DIR: ${{ runner.temp }}/claude
+        run: |
+          claude plugin marketplace add "$GITHUB_WORKSPACE"
+          market=$(python3 -c "import json; print(json.load(open('.claude-plugin/marketplace.json'))['name'])")
+          for name in $(python3 -c "import json; print(' '.join(p['name'] for p in json.load(open('.claude-plugin/marketplace.json'))['plugins']))"); do
+            claude plugin install "$name@$market"
+            version=$(python3 -c "import json; print(json.load(open('plugins/$name/.claude-plugin/plugin.json'))['version'])")
+            dir="$CLAUDE_CONFIG_DIR/plugins/cache/$market/$name/$version"
+            # Every skill in the source must land, and nothing outside the plugin folder.
+            for skill in plugins/$name/skills/*/SKILL.md; do
+              test -f "$dir/${skill#plugins/$name/}" || { echo "missing $skill in $dir"; exit 1; }
+            done
+            if [ -e "$dir/checks" ]; then echo "repo clutter in $dir"; exit 1; fi
+          done
