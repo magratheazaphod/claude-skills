@@ -7,7 +7,7 @@
   "plugins": [
     {
       "name": "cowork",
-      "source": "./",
+      "source": "./plugins/cowork",
       "description": "How Claude Cowork actually works, and field-tested patterns for running real products on it."
     }
   ]

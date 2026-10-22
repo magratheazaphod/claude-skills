@@ -4,7 +4,7 @@ Agent skills by Jesse Day, written from months of daily use.
 
 | Skill | What it covers |
 |---|---|
-| [`claude-cowork`](skills/claude-cowork/SKILL.md) | How Claude Cowork actually works on macOS beyond the help center: where tasks live on disk, local tasks vs routines, what a session can reach, how the scheduler decides to run, the editing traps, and a log of what changed from July to October 2026. Its [`production-patterns.md`](skills/claude-cowork/production-patterns.md) covers running unattended products on Cowork: prompts in git behind a stub, file handoff to local apps, pre-flight checks, model tiering, browser hygiene, and debugging routines |
+| [`claude-cowork`](plugins/cowork/skills/claude-cowork/SKILL.md) | How Claude Cowork actually works on macOS beyond the help center: where tasks live on disk, local tasks vs routines, what a session can reach, how the scheduler decides to run, the editing traps, and a log of what changed from July to October 2026. Its [`production-patterns.md`](plugins/cowork/skills/claude-cowork/production-patterns.md) covers running unattended products on Cowork: prompts in git behind a stub, file handoff to local apps, pre-flight checks, model tiering, browser hygiene, and debugging routines |
 
 Cowork changes fast. The skill says which app version and date it was checked
 against. Where a skill and Anthropic's docs disagree about *behaviour*, trust
@@ -19,7 +19,7 @@ Claude Code:
 /plugin install cowork@magratheazaphod-skills
 ```
 
-Or copy a folder from `skills/` into `~/.claude/skills/`. To use a skill in
+Or copy a skill folder from `plugins/*/skills/` into `~/.claude/skills/`. To use a skill in
 Claude or Cowork, upload it as a skill.
 
 ## Keeping it honest
