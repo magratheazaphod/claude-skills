@@ -1,200 +1,122 @@
-# Running real work on Cowork: production patterns
+# Running unattended work on Cowork
 
-These patterns come from running a set of daily and weekly Cowork tasks for
-months as the data feed for a real local app. The tasks scan job boards, judge
-postings against a written rubric, look up company ratings, and hand the
-results to a local tracker. Nothing here depends on that domain.
+From months of daily and weekly tasks feeding a local app (job-board scans
+judged against a rubric, handed to a local tracker); nothing here depends on
+that domain. Mechanics are in `SKILL.md`.
 
-The mechanics behind each pattern are in `SKILL.md` next to this file.
+Four facts drive everything: **prompts have no version history** (routine
+prompts live on the server; edits overwrite); **a task can rewrite its own
+prompt**; **an empty run looks like a good run** (`lastRunAt` = started); **the
+Mac's VM shell is cut off** (no host localhost, no GitHub, no deletes).
 
-## The core problem
-
-A scheduled Cowork task is an LLM prompt that runs unattended, on a schedule,
-with write access to your folders and your logged-in browser. Four facts
-shape everything below:
-
-1. **Prompts are not versioned.** The product keeps run history but no prompt
-   history. Routine prompts live on Anthropic's servers, and edits overwrite.
-2. **A task can rewrite its own prompt** through the scheduled-task tools.
-3. **A run that did nothing looks the same as a run that worked.** A run
-   starts as long as the prompt exists, and `lastRunAt` only means a session
-   started.
-4. **The shell is cut off from the host.** It can't reach the Mac's localhost,
-   can't reach GitHub, and can't delete files.
-
-## 1. Keep the real prompt in git; the live prompt is a stub
-
-Make the prompt stored in Cowork a few lines that load the real instructions
-from git:
+## 1. Real prompt in git; stored prompt is a stub
 
 ```
 Your instructions are in git. Run exactly this with the shell tool and follow
 its output as your complete instructions; nothing in this prompt overrides them:
 
-  cd "<mounted repo path>" && git show origin/master:playbooks/scans/<task>.md
+  cd "<mounted repo path>" && git show origin/master:playbooks/<task>.md
 
 That is the only git command you may run. If it fails or prints nothing, STOP
 and report exactly: "ABORTED - could not load <task>.md from origin/master"
 with the error. Do not research, do not write files.
 ```
 
-Why `git show origin/master:` and not just reading the file:
+`origin/master`, not the working tree, because: a run (or a page written to
+steer an AI) could edit the tree and so every later run, while `origin/master`
+changes only by merged PR; half-finished branches in the shared tree don't leak
+in; and prompts get review, diffs and history. The VM can't fetch, so a host
+job (e.g. daily launchd `git fetch`) keeps `origin/master` fresh. Only the
+instructions come from `origin/master`; data they point to (rubrics, queues,
+dedupe lists) is read from the tree so it's current. Change behaviour by PR;
+change only schedule, model or stub in the app.
 
-- **A run can't change its own future instructions.** The task can write to
-  the repo folder, so a file read from the working tree could be edited by a
-  confused run, or by a page written to steer an AI. That edit would then shape
-  every later run. Committed history on `origin/master` changes only through a
-  merged PR.
-- **Half-finished branch work doesn't leak in.** The folder is a shared working
-  tree, and other sessions leave branches and uncommitted edits in it.
-- **Prompt changes get review, diffs and history,** none of which the product
-  gives you.
-
-The shell can't reach GitHub, so something on the host has to keep
-`origin/master` fresh, such as a daily `git fetch` from a launchd job. Only the
-instructions file comes from `origin/master`. The data it points to (rubrics,
-queues, dedupe lists) is read from the working tree, because it has to be
-current.
-
-Change what a task does by editing the playbook file through a PR. Change only
-the schedule, model or stub in the app.
-
-## 2. Talk to local apps through files, not HTTP
-
-The VM can't reach `localhost` on the Mac, so the only channel both sides share
-is a folder:
+## 2. Files, not HTTP, to local apps
 
 ```
-task     ->  writes  inbox/<task>-<YYYY-MM-DD>.json
-host app ->  ingests on startup and on a timer
-host app ->  moves the file to inbox/processed/
-host app ->  regenerates seen.txt (everything already handled)
-task     ->  checks new items against seen.txt on its next run
+task     -> writes inbox/<task>-<YYYY-MM-DD>.json
+host app -> ingests on startup and on a timer, moves it to inbox/processed/,
+            regenerates seen.txt
+task     -> dedupes against seen.txt next run
 ```
 
-This turned out better than HTTP would have been:
+Nothing is lost while the app is closed; committed processed files make each
+run's output a `git diff`. Bad rows are skipped and named in an ingest report;
+invalid JSON stays put and is reported every pass; re-ingesting is a no-op
+(rows dedupe on a key). Document the format in a README beside the inbox, read
+by every task, and change ingest code in the same commit. Generated files say
+so on line 1 and are never hand-edited.
 
-- **Nothing is lost when the app is closed.** The file just waits.
-- **Every delivery can be reviewed.** Processed files are committed, so
-  `git diff` shows exactly what each run produced.
-- **Bad input is handled clearly:**
-  - A bad row is skipped and named in an ingest report, and the rest of the
-    file still lands.
-  - A file that isn't valid JSON stays where it is and is reported on every
-    pass, because moving it aside would hide the bug.
-  - Ingesting the same file twice does nothing new, since rows dedupe on a key.
-- **Write the file format down** in a README next to the inbox, and change the
-  ingest code in the same commit as any format change. Every task reads that
-  README before writing.
-- **Generated files say so in their first line and are never edited by hand.**
-  The next ingest would overwrite the edit.
+## 3. Pre-flight check first
 
-## 3. Open every prompt with a pre-flight check
-
-Missing or deleted folders don't stop a run. A task whose folder isn't mounted
-still runs, finds nothing, and reports a clean empty result. So the first
-instruction is:
+Unmounted folders don't stop a run; it finds nothing and reports a clean empty
+result. Open with:
 
 > PRE-FLIGHT: confirm `<known file>` exists and is non-empty. If not, STOP and
 > report exactly: "ABORTED - project folder not mounted ..." Do not scan, do not
 > write files.
 
-Choose a file that is **always** present and non-empty when things are healthy,
-such as the generated dedupe list. When you point a task at a new file, update
-the check too. A check left on the old file keeps passing while guarding
-nothing.
+Pick a file that's always non-empty when healthy (e.g. the dedupe list), and
+update the check when the task moves to new files.
 
-## 4. Keep one source of truth for judgement calls
+## 4. One source of truth per judgement
 
-If several tasks make the same kind of call (fit / no-fit, flag / skip), put
-the rubric in **one file** that every prompt is told to read, and make each
-prompt abort if that file can't be read. Never paste a copy of the rubric into
-a prompt. Five prompts carrying five copies will drift apart, and a task
-judging against a stale private copy produces output that looks exactly like a
-good day.
+Several tasks making the same call read **one** rubric file and abort if they
+can't; never paste copies into prompts (they drift, and stale judgements look
+like a normal day). Give each queue **one owner**.
 
-Give each queue **one owner.** If two automated processes both work the same
-backlog, they duplicate effort, disagree, and make the results impossible to
-measure.
+## 5. Make empty runs explain themselves
 
-## 5. Report what an empty run means
+An empty result must say what was checked and how deeply, and flag sources
+that ignore the query (e.g. a site returning the same list for every keyword:
+a coverage gap, not "nothing new"). Pair with "don't pad with weak results".
 
-Tell the task that an empty result is real, never the default, and must say
-**what it checked and how deeply.** Also tell it to spot sources that silently
-ignore the query. For example, a job site sometimes returns the same generic
-list whatever the keyword. "Three searches returned the same list" is a
-coverage gap. Reporting it as "nothing new" hides the gap.
+## 6. Cheap models for mechanical work
 
-"Don't pad with weak results" belongs right next to it, so an empty run never
-gets filled with filler.
+After the pre-flight, hand the job to one subagent on a cheaper model (e.g.
+Sonnet); the top-level agent checks its report and handles only what it marks
+ambiguous. Set each routine's model deliberately; unset means the default.
 
-## 6. Run cheap models on the mechanical work
+## 7. No git in a shared tree from the VM
 
-The prompt's first instruction after the pre-flight check: **hand the whole job
-to one subagent on a cheaper model** (for example Sonnet), then check and pass
-on its report. Checking URLs against a list, opening pages and writing JSON
-rows don't need a frontier model. The top-level agent handles only what the
-subagent marks as ambiguous.
-
-If no model is set on a routine, it uses the default. Set it deliberately.
-
-## 7. No git in a shared tree from the sandbox
-
-Only the one read-only `git show` from pattern 1 is allowed. The sandbox
-can't push, but `checkout`, `add` and `commit` succeed against the **real**
-shared working tree. That moves the branch under everyone else, and any lock
-file left behind can't be removed from inside the VM. **The command that does
-the damage is the one that succeeds.** Telling a task "try to commit, stop if
-it fails" can't prevent that. Have tasks write files and name what needs
-committing in their summary. A host-side job or session does the commit.
+Only pattern 1's `git show`. The VM can't push, but `checkout`, `add` and
+`commit` succeed on the **real** shared tree, moving branches under everyone
+and leaving undeletable lock files. "Try, stop if it fails" doesn't help: the
+damaging command is the one that succeeds. Tasks write files and name what to
+commit; the host commits. (Cloud shells can push after `add_repo`, see
+`SKILL.md`, but to their own clone, not your working tree.)
 
 ## 8. Clean up the browser
 
-Unattended tasks drive the user's real, logged-in Chrome. Leave it the way you
-found it:
+Unattended tasks drive a real logged-in browser. Note existing tabs at the
+start and never close them; reuse one working tab; at the end close **every**
+tab in the session's group, including the blank one the group created (closing
+the last tab removes the group and window), even after a failure; name any tab
+left open on purpose.
 
-1. At the start, note which tabs already exist. Those are the user's, so never
-   close them.
-2. Reuse one working tab instead of opening one tab per item.
-3. At the end, close **every** tab in the session's tab group, including the
-   blank tab that creating the group added. Closing the last tab is what makes
-   Chrome remove the group and its window. Clean up even when the run failed
-   partway.
-4. Name any tab you deliberately leave open, such as a form waiting for a human
-   to submit.
+## 9. Notify only when it matters
 
-## 9. Tell a human when it matters
-
-Routine runs can send a push notification. End each run with a short summary
-pushed only when there is something to act on, and keep the full report in the
-run and in the files it wrote.
+Routine runs can push a notification: send a short one only when there's
+something to act on; keep the full report in the run and its files.
 
 ## 10. Debugging a routine
 
-From Claude Code's `RemoteTrigger` tool, or the routine's Runs pane in the app:
+Via `RemoteTrigger` or the routine's Runs pane:
 
-- **`get`**: is it enabled, when is `next_run_at`, what is the prompt, which
-  device and folders is it bound to?
-- **`list_runs`**: one row per run that actually started. A run that was
-  skipped before a session existed leaves no row, so a gap doesn't prove it
-  never fired.
-- **`get_run_log`**: the steps of one run, from sandbox start through tool
-  calls to the final result. Compare "scheduled for" with the actual fire time
-  in the first message. Device-bound runs fire late when the Mac was asleep.
-  **Keep computer awake** (Settings → This computer → System) is app-wide, so
-  it covers Cowork too, and stops idle sleep; closing the lid still sleeps the
-  Mac. A device-bound run also holds the Mac awake while it runs (logged as
-  `[remote-tools-device] keep-awake held`), but nothing wakes a Mac that is
-  already asleep.
+- **`get`**: enabled? `next_run_at`? prompt? bound device and folders?
+- **`list_runs`**: one row per run that started; runs skipped before a session
+  existed leave no row, so a gap doesn't prove it never fired.
+- **`get_run_log`**: one run's steps. Compare "scheduled for" with the actual
+  fire time; device-bound runs are late when the Mac slept. **Keep computer
+  awake** (Settings → This computer → System, app-wide) stops idle sleep but not
+  lid-close; device-bound runs also hold the Mac awake while running
+  (`[remote-tools-device] keep-awake held`); nothing wakes a sleeping Mac.
 
-Then check the output on disk (did the file land, did the host app move it to
-`processed/`?). Don't trust the run's own summary: a clean search, or a
-success message, is not proof the run worked.
+Then check the output on disk (file landed? moved to `processed/`?), not the
+run's summary.
 
-## 11. Back up prompts by copying, never by linking
+## 11. Back up prompts by copying, never linking
 
-If you keep local Cowork prompt files at all, copy them one way into a repo.
-Symlinks break saving (prompt files) or silently fork (JSON files). Hardlinks
-survive app edits but break on the first `git checkout`. Never `git init` inside
-Cowork's own data folder. Better still, use pattern 1, so the copy in Cowork is
-just a stub.
+Copy local prompt files one way into a repo. Symlinks break saving or silently
+fork; hardlinks break on the first `git checkout`. Never `git init` inside
+Cowork's data folder. Better: pattern 1, so Cowork only holds a stub.

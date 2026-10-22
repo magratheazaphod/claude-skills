@@ -73,7 +73,9 @@ def doc_hash(url):
         ["curl", "-fsSL", "--max-time", "30", "-A", "claude-skills-drift-check", url],
         capture_output=True, text=True, check=True,
     ).stdout
-    # Normalize whitespace so cosmetic reflows don't count as drift.
+    # Drop image links (their signed URLs change on every fetch) and normalize
+    # whitespace, so neither counts as drift.
+    body = re.sub(r"!\[[^\]]*\]\([^)]*\)", "", body)
     return hashlib.sha256(" ".join(body.split()).encode()).hexdigest()
 
 
