@@ -47,8 +47,8 @@ None of the official docs say where anything is stored on disk.
 | | Local session | Cloud session | Device-bound routine |
 |---|---|---|---|
 | Agent runs | on your Mac | Anthropic's cloud | Anthropic's cloud |
-| Shell runs | Cowork's Linux VM on your Mac | cloud sandbox | Cowork's Linux VM on **your Mac** |
-| Local folders | mounted directly | copies fetched per file, deleted when the session is deleted | through the bound device |
+| Shell runs | Cowork's Linux VM on your Mac | cloud sandbox, **plus** `device_bash` in the Mac's VM for connected folders | Cowork's Linux VM on **your Mac** |
+| Local folders | mounted directly | through `device_bash` while the app is open; copies fetched per file are deleted when the session is deleted | through the bound device |
 | Needs the Mac awake and the app open | yes | no | **yes** |
 | Scheduled-task prompt lives | a file on your Mac | Anthropic's servers | Anthropic's servers |
 
@@ -161,7 +161,7 @@ on 3.x):
 
 - **No route to the host's localhost.** A server on `127.0.0.1` on the Mac is
   unreachable. Use files to talk to host-side apps (see `production-patterns.md`).
-- **No route to github.com** (DNS failed), so `git push`, `git fetch` and `gh`
+- **No route to github.com** from this VM (DNS failed), so `git push`, `git fetch` and `gh`
   fail. Local git commands work against the real mounted tree.
 - **Files can't be deleted.** A leftover `.git/index.lock` can't be removed
   from inside the VM.
@@ -183,6 +183,36 @@ sibling folders are still fine. Keep the data folder out of any tree you might
 want to grant whole.
 
 Cowork's own session storage is deliberately unreadable from a session.
+
+### A cloud session has two shells
+
+Tested on 2026-10-22 with a folder connected:
+
+| | Cloud shell | `device_bash` |
+|---|---|---|
+| Runs in | an x86_64 Linux VM in Anthropic's cloud, as `root` in an empty `/home/claude` | Cowork's VM on your Mac, as a per-run user |
+| Your folders | none | each connected folder at `$HOME/mnt/<folder>` |
+| Network | every request through a mandatory proxy, which only lets allow-listed destinations through ([architecture overview](https://support.claude.com/en/articles/14479288)) | the VM's own egress filter |
+| Clock | UTC | UTC |
+
+So anything that must land on your Mac goes through `device_bash`, and only
+while the desktop app is open.
+
+**GitHub from a cloud session is broken, not blocked by design.** `git` and
+`gh` are installed and `GH_TOKEN`/`GITHUB_TOKEN` are set, but the token is a
+short placeholder (it starts `prox`) that the proxy is meant to swap for a real
+credential. On 2026-10-22 the proxy swapped nothing: `git clone` of a *public*
+repo, even with no credentials sent, failed with a login prompt, and `gh`
+called the token invalid. The Claude GitHub App was installed and covered the
+repo. Anthropic's docs say cloud sessions can clone public repos and, with the
+app, push. Open reports
+[claude-code#84581](https://github.com/anthropics/claude-code/issues/84581)
+and [#100164](https://github.com/anthropics/claude-code/issues/100164) describe
+the same failure in Cowork (the proxy's error points at an `add_repo` tool that
+Cowork sessions don't have), and one reporter saw pushes work for a few hours
+before stopping. Until that is fixed, don't build a Cowork task that needs
+GitHub: hand the files to the Mac and push from there, or use a Claude Code
+cloud task, which picks its repo up front.
 
 ## 5. A task can rewrite itself, through tools and not files
 
@@ -306,6 +336,7 @@ tasks every day. It is not a full product changelog.
 | By October 2026 | New built-in tools `list_task_runs` and `run_scheduled_task`. One-off tasks (`fireAt`), and per-task `model` and `permissionMode` | A task can check its own run history and start runs |
 | By October 2026 | In split sessions the shell became a separate tool, and its prompt warns that files written outside `/sessions/<vm>/mnt/` are invisible | |
 | 2026-10-06 | **Cloud by default** for new Pro/Max sessions and tasks, and "Only on your computer" removed (official). Older tasks stay on the device. Anthropic points local-only work to Claude Code Desktop | The biggest change so far: "Cowork runs on your Mac" is no longer the default |
+| 2026-10-22 | A cloud session with a connected folder used two shells: a cloud VM behind a proxy, and `device_bash` on the Mac for the folder. GitHub was unreachable from the cloud shell even for a public repo with the Claude GitHub App installed (open bugs claude-code#84581, #100164) | The VM finding "no route to GitHub" now has a cloud twin with a different cause. Neither shell is a place to run git against GitHub |
 | By 2026-10-22 (3.1623.4) | Major version 3. The scheduler gained skip checks (sign-in, per-task and global run limits, Dispatch hold, host readiness, throttling) and records skipped runs. Docs renamed routines "cloud scheduled tasks". A built-in browser became the default. "Keep computer awake" setting, CCD per-run worktrees, and "Download task data" / `/port-task-data` to move a task to Claude Code | "The only check before a run is the prompt file" stopped being true. A run can now be skipped for reasons that have nothing to do with the task |
 
 What stayed the same throughout:
@@ -314,7 +345,8 @@ What stayed the same throughout:
 - Self-rewrite through `update_scheduled_task`, with no self-guard.
 - The writer behaviour that breaks symlinks.
 - No pre-run check that the task's folders exist or that it can do its job.
-- No route from the VM to the host's localhost or to GitHub.
+- No route from the VM to the host's localhost or to GitHub (and, by October,
+  no working GitHub access from cloud shells either).
 - No hand edits while the app is running.
 
 The lesson: in four months the storage model, the place tasks execute and the
